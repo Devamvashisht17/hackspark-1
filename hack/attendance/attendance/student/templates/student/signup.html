@@ -1,0 +1,356 @@
+{% extends 'student/base.html' %}
+{% block title %}Signup{% endblock %}
+{% block content %}
+<div class="card p-4">
+    <h2 class="mb-3">Create Account</h2>
+    {% if form and form.errors %}
+    <div class="alert alert-danger">
+        {% if form.non_field_errors %}
+            {% for err in form.non_field_errors %}
+                <div>{{ err }}</div>
+            {% endfor %}
+        {% endif %}
+        {% for field, errors in form.errors.items %}
+            {% for err in errors %}
+                <div><strong>{{ field|capfirst }}:</strong> {{ err }}</div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="username" class="form-label">Roll Number</label>
+            <input type="text" name="username" class="form-control" required>
+            <div class="form-text">For students: Use your roll number as username to auto-link your profile</div>
+        </div>
+
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="role" class="form-label">Role</label>
+            <select name="role" class="form-select" id="role-select" required>
+                <option value="student">Student</option>
+                <option value="faculty">Faculty</option>
+            </select>
+        </div>
+
+        <div class="mb-3" id="faculty-code-field" style="display: none;">
+            <label for="faculty_code" class="form-label">Faculty Access Code</label>
+            <input type="text" name="faculty_code" class="form-control">
+        </div>
+
+        <div class="mb-3" id="faculty-roll-field" style="display: none;">
+            <label for="faculty_roll_no" class="form-label">Faculty Roll No</label>
+            <input type="text" name="faculty_roll_no" class="form-control">
+        </div>
+
+        <div class="mb-3" id="student-group-field" style="display: block;">
+            <label for="student_group" class="form-label">Class/Group</label>
+            <select name="student_group" class="form-select">
+                {% for g in form.fields.student_group.queryset %}
+                    <option value="{{ g.id }}">{{ g.stream }} - {{ g.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3" id="student-roll-field" style="display: block;">
+            <label for="student_roll_no" class="form-label">Username</label>
+            <input type="text" name="student_roll_no" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" name="password" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="confirm_password" class="form-label">Confirm Password</label>
+            <input type="password" name="confirm_password" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Capture Face</label>
+            <div class="d-flex flex-column gap-2">
+                <video id="camera" autoplay playsinline width="320" height="240" style="border:1px solid #ccc;"></video>
+                <canvas id="snapshot" width="320" height="240" style="display:none;"></canvas>
+                <div class="small" id="liveness-instruction" style="min-height:20px;color:#6c757d;"></div>
+                <div class="small" id="liveness-status" style="min-height:20px;"></div>
+                <div>
+                    <button type="button" id="start-camera" class="btn btn-secondary btn-sm">Start Camera</button>
+                    <button type="button" id="capture" class="btn btn-outline-primary btn-sm" disabled>Capture</button>
+                    <button type="button" id="retake" class="btn btn-outline-secondary btn-sm" style="display:none;">Retake</button>
+                </div>
+            </div>
+            <input type="hidden" name="face_image_data" id="face_image_data" />
+            <input type="hidden" name="face_encoding" id="face_encoding" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Sign Up</button>
+<p class="mt-3">
+    Already have an account? 
+    <a href="{% url 'login' %}">Login here</a>
+</p>
+
+    </form>
+</div>
+
+<script>
+document.getElementById('role-select').addEventListener('change', function() {
+    const isFaculty = this.value === 'faculty';
+    const facultyCode = document.getElementById('faculty-code-field');
+    const facultyRoll = document.getElementById('faculty-roll-field');
+    const studentGroup = document.getElementById('student-group-field');
+    const studentRoll = document.getElementById('student-roll-field');
+
+    facultyCode.style.display = isFaculty ? 'block' : 'none';
+    facultyRoll.style.display = isFaculty ? 'block' : 'none';
+    studentGroup.style.display = isFaculty ? 'none' : 'block';
+    studentRoll.style.display = isFaculty ? 'none' : 'block';
+});
+
+const startBtn = document.getElementById('start-camera');
+const captureBtn = document.getElementById('capture');
+const retakeBtn = document.getElementById('retake');
+const video = document.getElementById('camera');
+const canvas = document.getElementById('snapshot');
+const hiddenInput = document.getElementById('face_image_data');
+const faceEncodingInput = document.getElementById('face_encoding');
+const liveInstruction = document.getElementById('liveness-instruction');
+const liveStatus = document.getElementById('liveness-status');
+const formEl = document.querySelector('form');
+let streamRef = null;
+let livenessPassed = false;
+let stopLiveness = null;
+
+startBtn.addEventListener('click', async () => {
+    try {
+        streamRef = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = streamRef;
+        startLivenessCheck();
+    } catch (e) {
+        alert('Unable to access camera. Please allow camera permissions.');
+    }
+});
+
+captureBtn.addEventListener('click', async () => {
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/png');
+    hiddenInput.value = dataUrl;
+    
+    // Generate face encoding
+    try {
+        const faceEncoding = await generateFaceEncoding(dataUrl);
+        if (faceEncoding) {
+            faceEncodingInput.value = JSON.stringify(faceEncoding);
+            console.log('Face encoding generated successfully');
+        } else {
+            alert('Failed to generate face encoding. Please try again.');
+            return;
+        }
+    } catch (error) {
+        console.error('Error generating face encoding:', error);
+        alert('Error generating face encoding. Please try again.');
+        return;
+    }
+    
+    canvas.style.display = 'block';
+    video.style.display = 'none';
+    retakeBtn.style.display = 'inline-block';
+});
+
+retakeBtn.addEventListener('click', () => {
+    hiddenInput.value = '';
+    faceEncodingInput.value = '';
+    canvas.style.display = 'none';
+    video.style.display = 'block';
+    retakeBtn.style.display = 'none';
+});
+
+formEl.addEventListener('submit', (e) => {
+    if (!livenessPassed) {
+        e.preventDefault();
+        alert('Please complete the liveness check before submitting.');
+    } else if (!hiddenInput.value) {
+        e.preventDefault();
+        alert('Please capture your face before submitting.');
+    } else if (!faceEncodingInput.value) {
+        e.preventDefault();
+        alert('Face encoding is missing. Please capture your face again.');
+    }
+});
+
+function startLivenessCheck() {
+    const challenges = [
+        { key: 'left', text: 'Turn your head LEFT' },
+        { key: 'right', text: 'Turn your head RIGHT' },
+        { key: 'closer', text: 'Move CLOSER to the camera' },
+        { key: 'farther', text: 'Move FARTHER from the camera' }
+    ];
+    const challenge = challenges[Math.floor(Math.random() * challenges.length)];
+    liveInstruction.textContent = challenge.text;
+    liveStatus.textContent = 'Liveness check running...';
+    liveStatus.style.color = '#6c757d';
+
+    const FaceDet = window.FaceDetector ? new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 }) : null;
+    let lastX = null, lastWidth = null;
+    const widthHistory = [];
+    const xHistory = [];
+    let consecutiveFace = 0;
+
+    const tick = async () => {
+        if (!streamRef) return;
+        try {
+            let faceBox = null;
+            if (FaceDet) {
+                const faces = await FaceDet.detect(video);
+                if (faces && faces.length > 0) {
+                    const b = faces[0].boundingBox || faces[0].boundingClientRect || faces[0];
+                    faceBox = { x: b.x, y: b.y, width: b.width, height: b.height };
+                }
+            } else {
+                // Fallback: simple motion/size via frame differencing
+                const tmp = document.createElement('canvas');
+                tmp.width = video.videoWidth || 320;
+                tmp.height = video.videoHeight || 240;
+                const tctx = tmp.getContext('2d');
+                tctx.drawImage(video, 0, 0, tmp.width, tmp.height);
+                // Use entire frame width as pseudo box
+                faceBox = { x: 0, y: 0, width: tmp.width, height: tmp.height };
+            }
+
+            if (faceBox) {
+                consecutiveFace++;
+                // Track center X and width
+                const centerX = faceBox.x + faceBox.width / 2;
+                xHistory.push(centerX);
+                widthHistory.push(faceBox.width);
+
+                if (xHistory.length > 20) xHistory.shift();
+                if (widthHistory.length > 20) widthHistory.shift();
+
+                if (xHistory.length >= 10 && widthHistory.length >= 10) {
+                    const dx = centerX - (lastX ?? centerX);
+                    const dw = faceBox.width - (lastWidth ?? faceBox.width);
+                    lastX = centerX;
+                    lastWidth = faceBox.width;
+
+                    const xMin = Math.min(...xHistory);
+                    const xMax = Math.max(...xHistory);
+                    const wMin = Math.min(...widthHistory);
+                    const wMax = Math.max(...widthHistory);
+                    const xRange = xMax - xMin;
+                    const wRatio = wMax / Math.max(1, wMin);
+
+                    const movedLeft = dx < -2 || (xRange > 30 && (xHistory[0] - xHistory[xHistory.length - 1]) > 10);
+                    const movedRight = dx > 2 || (xRange > 30 && (xHistory[xHistory.length - 1] - xHistory[0]) > 10);
+                    const movedCloser = wRatio > 1.2;
+                    const movedFarther = wRatio < 0.85;
+
+                    let ok = false;
+                    if (challenge.key === 'left') ok = movedLeft;
+                    if (challenge.key === 'right') ok = movedRight;
+                    if (challenge.key === 'closer') ok = movedCloser;
+                    if (challenge.key === 'farther') ok = movedFarther;
+
+                    if (ok && consecutiveFace > 8) {
+                        livenessPassed = true;
+                        liveStatus.textContent = 'Liveness check passed';
+                        liveStatus.style.color = '#198754';
+                        captureBtn.disabled = false;
+                        if (stopLiveness) stopLiveness();
+                        return;
+                    }
+                }
+            } else {
+                consecutiveFace = 0;
+            }
+        } catch (err) {
+            // Continue trying
+        }
+        raf = requestAnimationFrame(tick);
+    };
+    let raf = requestAnimationFrame(tick);
+    stopLiveness = () => cancelAnimationFrame(raf);
+}
+
+// Function to generate face encoding from image data
+async function generateFaceEncoding(dataUrl) {
+    try {
+        // Create a simple face encoding using basic image processing
+        // This is a simplified version - in production you might want to use a more sophisticated approach
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        return new Promise((resolve, reject) => {
+            img.onload = function() {
+                try {
+                    // Create a temporary canvas to process the image
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    // Set canvas size
+                    tempCanvas.width = 100;
+                    tempCanvas.height = 100;
+                    
+                    // Draw and resize image
+                    tempCtx.drawImage(img, 0, 0, 100, 100);
+                    
+                    // Get image data
+                    const imageData = tempCtx.getImageData(0, 0, 100, 100);
+                    const data = imageData.data;
+                    
+                    // Convert to grayscale and normalize
+                    const features = [];
+                    for (let i = 0; i < data.length; i += 4) {
+                        // Convert RGB to grayscale
+                        const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                        // Normalize to 0-1 range
+                        features.push(gray / 255);
+                    }
+                    
+                    // Add some statistical features
+                    const mean = features.reduce((a, b) => a + b, 0) / features.length;
+                    const variance = features.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / features.length;
+                    const std = Math.sqrt(variance);
+                    
+                    // Add statistical features to the encoding
+                    features.push(mean, variance, std);
+                    
+                    // Add histogram features (simplified)
+                    const histogram = new Array(32).fill(0);
+                    for (let i = 0; i < features.length - 3; i++) {
+                        const bin = Math.floor(features[i] * 31);
+                        histogram[bin]++;
+                    }
+                    // Normalize histogram
+                    const histSum = histogram.reduce((a, b) => a + b, 0);
+                    for (let i = 0; i < histogram.length; i++) {
+                        histogram[i] = histogram[i] / histSum;
+                    }
+                    features.push(...histogram);
+                    
+                    resolve(features);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            
+            img.onerror = function() {
+                reject(new Error('Failed to load image'));
+            };
+            
+            img.src = dataUrl;
+        });
+    } catch (error) {
+        console.error('Error in generateFaceEncoding:', error);
+        return null;
+    }
+}
+</script>
+{% endblock %}

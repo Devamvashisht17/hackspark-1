@@ -1,0 +1,40 @@
+<div class="container my-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Faculty Dashboard</h2>
+    <a href="/analytics/qr/" class="btn btn-success"><i class="fas fa-qrcode me-2"></i>Generate QR</a>
+  </div>
+
+  {% if groups %}
+  <div class="row g-3">
+    {% for group in groups %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-2">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width:44px;height:44px;font-weight:600;">
+              {{ group.name|slice:":1" }}
+            </div>
+            <div>
+              <h5 class="card-title mb-0">{{ group.stream }} - {{ group.name }}</h5>
+              <small class="text-muted">ID: {{ group.id }}</small>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a href="{% url 'analytics_dashboard' group.id %}" class="btn btn-outline-primary flex-fill">
+              <i class="fas fa-chart-line me-2"></i>View Analytics
+            </a>
+            <a href="/faculty/mark/{{ group.id }}/" class="btn btn-primary flex-fill">
+              <i class="fas fa-user-check me-2"></i>Mark Attendance
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-info">No groups have been assigned to you yet.</div>
+  {% endif %}
+</div>
+

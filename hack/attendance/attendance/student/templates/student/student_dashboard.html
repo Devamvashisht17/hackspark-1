@@ -1,0 +1,394 @@
+<!-- student/templates/student/student_dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .dashboard-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            margin: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .welcome-header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .feature-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 15px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: none;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+        .scan-icon { color: #28a745; }
+        .analytics-icon { color: #007bff; }
+        .profile-icon { color: #6f42c1; }
+        .course-icon { color: #fd7e14; }
+        .btn-feature {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-scan {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+        .btn-scan:hover {
+            background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+            color: white;
+            transform: scale(1.02);
+        }
+        .btn-analytics {
+            background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+            color: white;
+        }
+        .btn-analytics:hover {
+            background: linear-gradient(135deg, #0056b3 0%, #520dc2 100%);
+            color: white;
+            transform: scale(1.02);
+        }
+        .btn-profile {
+            background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+            color: white;
+        }
+        .btn-profile:hover {
+            background: linear-gradient(135deg, #59359a 0%, #d91a72 100%);
+            color: white;
+            transform: scale(1.02);
+        }
+        .quick-stats {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="dashboard-container">
+            <!-- Welcome Header -->
+            <div class="welcome-header">
+                <h1><i class="fas fa-user-graduate me-3"></i>Welcome, {{ user.username }}!</h1>
+                <p class="mb-0">Student Dashboard - Manage your attendance and academic progress</p>
+            </div>
+
+            <!-- Enhanced Quick Stats -->
+            <div class="quick-stats">
+                <div class="row">
+                    <div class="col-md-2">
+                        <div class="stat-item">
+                            <div class="stat-number text-success" id="attendance-rate">{{ attendance_rate|default:0 }}%</div>
+                            <div class="progress mt-2" style="height: 8px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ attendance_rate|default:0 }}%;" aria-valuenow="{{ attendance_rate|default:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="stat-label">Overall Rate</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-item">
+                            <div class="stat-number text-info" id="weekly-attendance">{{ weekly_attendance|default:0 }}%</div>
+                            <div class="stat-label">Weekly Rate</div>
+                            <small class="text-muted">({{ weekly_present|default:0 }}/{{ weekly_total|default:0 }})</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-item">
+                            <div class="stat-number text-warning" id="monthly-attendance">{{ monthly_attendance|default:0 }}%</div>
+                            <div class="stat-label">Monthly Rate</div>
+                            <small class="text-muted">({{ monthly_present|default:0 }}/{{ monthly_total|default:0 }})</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-item">
+                            <div class="stat-number text-primary" id="total-classes">{{ total_classes|default:0 }}</div>
+                            <div class="stat-label">Total Classes</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-item">
+                            <div class="stat-number text-success" id="present-days">{{ present_days|default:0 }}</div>
+                            <div class="stat-label">Present Days</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-item">
+                            <div class="stat-number text-danger" id="absent-days">{{ absent_days|default:0 }}</div>
+                            <div class="stat-label">Absent Days</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Today's Status and Streak -->
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="stat-item">
+                            {% if is_present_today %}
+                                <div class="stat-number text-success">
+                                    <i class="fas fa-check-circle me-2"></i>Present
+                                </div>
+                                {% if today_time %}
+                                    <div class="stat-label">Marked at {{ today_time }}</div>
+                                {% endif %}
+                            {% else %}
+                                <div class="stat-number text-secondary">
+                                    <i class="fas fa-clock me-2"></i>Not Marked
+                                </div>
+                                <div class="stat-label">Today's attendance not marked</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-item">
+                            <div class="stat-number text-danger">
+                                <i class="fas fa-fire me-2"></i>{{ current_streak|default:0 }}
+                            </div>
+                            <div class="stat-label">Current Streak (days)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Features -->
+            <div class="row">
+                <!-- QR Scanner Card -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="feature-card text-center">
+                        <i class="fas fa-qrcode feature-icon scan-icon"></i>
+                        <h3 class="mb-3">Scan QR Code</h3>
+                        <p class="text-muted mb-4">Scan your teacher's QR code to mark your attendance instantly</p>
+                        <a href="/scan/" class="btn btn-feature btn-scan">
+                            <i class="fas fa-camera me-2"></i>Open QR Scanner
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Attendance Analytics Card -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="feature-card text-center">
+                        <i class="fas fa-chart-line feature-icon analytics-icon"></i>
+                        <h3 class="mb-3">Attendance Analytics</h3>
+                        <p class="text-muted mb-4">View detailed attendance reports and analytics</p>
+                        <a href="/attendance-analytics/" class="btn btn-feature btn-analytics">
+                            <i class="fas fa-chart-bar me-2"></i>View Analytics
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Profile Card -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="feature-card text-center">
+                        <i class="fas fa-user-cog feature-icon profile-icon"></i>
+                        <h3 class="mb-3">My Profile</h3>
+                        <p class="text-muted mb-4">Update your profile information and settings</p>
+                        <a href="/student/profile/" class="btn btn-feature btn-profile">
+                            <i class="fas fa-edit me-2"></i>Edit Profile
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Courses Card -->
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="feature-card text-center">
+                        <i class="fas fa-book feature-icon course-icon"></i>
+                        <h3 class="mb-3">My Courses</h3>
+                        <p class="text-muted mb-4">View your enrolled courses and schedules</p>
+                        <a href="/courses/" class="btn btn-feature" style="background: linear-gradient(135deg, #fd7e14 0%, #dc3545 100%); color: white;">
+                            <i class="fas fa-graduation-cap me-2"></i>View Courses
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subject Performance Section -->
+            {% if subject_stats %}
+            <div class="feature-card">
+                <h3><i class="fas fa-chart-bar me-2"></i>Subject Performance</h3>
+                <p class="text-muted mb-3">Your attendance performance across different subjects</p>
+                <div class="row">
+                    {% for subject_name, stats in subject_stats.items %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">{{ subject_name }}</h6>
+                                <div class="h4 {% if stats.rate >= 80 %}text-success{% elif stats.rate >= 60 %}text-warning{% else %}text-danger{% endif %}">
+                                    {{ stats.rate }}%
+                                </div>
+                                <small class="text-muted">
+                                    {{ stats.present }}/{{ stats.total }} classes
+                                </small>
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar {% if stats.rate >= 80 %}bg-success{% elif stats.rate >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                         style="width: {{ stats.rate }}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- My Courses Section -->
+            {% if student_subjects %}
+            <div class="feature-card">
+                <h3><i class="fas fa-book me-2"></i>My Courses</h3>
+                {% if student_group %}
+                <p class="text-muted mb-3">Courses assigned to {{ student_group.stream }} - {{ student_group.name }}</p>
+                {% endif %}
+                <div class="row">
+                    {% for subject in student_subjects %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-book-open fa-2x text-primary mb-2"></i>
+                                <h6 class="card-title">{{ subject.name }}</h6>
+                                <span class="badge bg-primary">{{ subject.code }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="text-center mt-3">
+                    <a href="/courses/" class="btn btn-outline-primary">
+                        <i class="fas fa-eye me-2"></i>View All Courses
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recent Activity -->
+            <div class="feature-card">
+                <h3><i class="fas fa-clock me-2"></i>Recent Activity (Last 5 Days)</h3>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Date</th>
+                                <th>Subject</th>
+                                <th>Teacher</th>
+                                <th>Class</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                                <th>Verified</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-activity">
+                            {% if recent_records and recent_records|length > 0 %}
+                                {% for r in recent_records %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ r.label }}</strong>
+                                        <br><small class="text-muted">{{ r.date }}</small>
+                                    </td>
+                                    <td>{{ r.subject }}</td>
+                                    <td>{{ r.teacher }}</td>
+                                    <td>{{ r.class }}</td>
+                                    <td>
+                                        {% if r.status == 'Present' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>Present
+                                            </span>
+                                        {% elif r.status == 'Absent' %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times me-1"></i>Absent
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ r.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ r.time }}</td>
+                                    <td class="text-center">
+                                        {% if r.face_verified %}
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-user-check me-1"></i>Yes
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-user-times me-1"></i>No
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        No recent activity. Start by scanning a QR code to mark your attendance!
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if recent_records and recent_records|length > 0 %}
+                <div class="text-center mt-3">
+                    <a href="/attendance-analytics/" class="btn btn-outline-primary">
+                        <i class="fas fa-chart-line me-2"></i>View Detailed Analytics
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <a href="/logout/" class="btn btn-outline-danger me-3">
+                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                    </a>
+                    <a href="/" class="btn btn-outline-secondary">
+                        <i class="fas fa-home me-2"></i>Home
+                    </a>
+                </div>
+        </div>
+        </div>
+        </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    </script>
+</body>
+</html>
